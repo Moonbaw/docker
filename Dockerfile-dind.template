@@ -1,4 +1,4 @@
-{{ include "shared" -}}
+./bootstrap.sh available{{ include "shared" -}}
 FROM docker:{{ env.version }}-cli
 
 # https://github.com/moby/moby/blob/0eecd59153c03ced5f5ddd79cc98f29e4d86daec/project/PACKAGERS.md#runtime-dependencies
