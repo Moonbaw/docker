@@ -45,47 +45,20 @@ dindLatest="$(
 
 dockerVersions="$(
 	git ls-remote --tags https://github.com/docker/docker.git \
-		| cut -d$'\t' -f2 \
-		| grep '^refs/tags/v[0-9].*$' \
-		| sed 's!^refs/tags/v!!; s!\^{}$!!' \
-		| sort -u \
-		| gawk '
-			{ data[lines++] = $0 }
-
-			# "beta" sorts lower than "tp" even though "beta" is a more preferred release, so we need to explicitly adjust the sorting order for RCs
-			# also, "18.09.0-ce-beta1" vs "18.09.0-beta3"
-			function docker_version_compare(i1, v1, i2, v2, l, r) {
-				l = v1; gsub(/-ce/, "", l); gsub(/-tp/, "-alpha", l)
-				r = v2; gsub(/-ce/, "", r); gsub(/-tp/, "-alpha", r)
-				patsplit(l, ltemp, /[^.-]+/)
-				patsplit(r, rtemp, /[^.-]+/)
-				for (i = 0; i < length(ltemp) && i < length(rtemp); ++i) {
-					if (ltemp[i] < rtemp[i]) {
-						return -1
-					}
-					if (ltemp[i] > rtemp[i]) {
-						return 1
-					}
-				}
-				return 0
-			}
-
-			END {
-				asort(data, result, "docker_version_compare")
-				for (i in result) {
-					print result[i]
-				}
-			}
+		| jq --raw-input --null-input --raw-output '
+			[ inputs | capture("refs/tags/(docker-)?v(?<version>[0-9.a-z-]+)($|\\^)") | .version ]
+			| unique_by( split(".") | map(tonumber? // .) )
+			| reverse[]
 		'
 )"
 
 buildxVersions="$(
 	git ls-remote --tags https://github.com/docker/buildx.git \
-		| cut -d$'\t' -f2 \
-		| grep '^refs/tags/v[0-9].*$' \
-		| sed 's!^refs/tags/v!!; s!\^{}$!!' \
-		| grep -vE -- '-rc' \
-		| sort -ruV
+		| jq --raw-input --null-input --raw-output '
+			[ inputs | capture("refs/tags/v(?<version>[0-9.]+)($|\\^)") | .version ]
+			| unique_by( split(".") | map(tonumber? // .) )
+			| reverse[]
+		'
 )"
 buildx=
 buildxVersion=
@@ -103,7 +76,7 @@ for buildxVersion in $buildxVersions; do
 				| select(.file | test("[.]json$") | not)
 				| { (
 					.file
-					| capture("[.](?<os>linux|windows|darwin|freebsd|openbsd)-(?<arch>[^.]+)(?<ext>[.]exe)?$")
+					| capture("[.](?<os>linux|windows|darwin|[a-z0-9]*bsd)-(?<arch>[^.]+)(?<ext>[.]exe)?$")
 					// error("failed to parse os-arch from filename: " + .)
 					| if .os == "linux" then "" else .os + "-" end
 					+ ({
@@ -133,11 +106,11 @@ fi
 
 composeVersions="$(
 	git ls-remote --tags https://github.com/docker/compose.git \
-		| cut -d$'\t' -f2 \
-		| grep '^refs/tags/v[0-9].*$' \
-		| sed 's!^refs/tags/v!!; s!\^{}$!!' \
-		| grep -vE -- '-[a-zA-Z]' \
-		| sort -ruV
+		| jq --raw-input --null-input --raw-output '
+			[ inputs | capture("refs/tags/v(?<version>[0-9.]+)($|\\^)") | .version ]
+			| unique_by( split(".") | map(tonumber? // .) )
+			| reverse[]
+		'
 )"
 compose=
 composeVersion=
@@ -196,7 +169,7 @@ for version in "${versions[@]}"; do
 		channel='test'
 	fi
 
-	if ! fullVersion="$(grep $rcGrepV -E -- '-(rc|tp|beta)' <<<"$versionOptions" | tail -1)" || [ -z "$fullVersion" ]; then
+	if ! fullVersion="$(grep $rcGrepV -E -- '-(rc|tp|beta)' <<<"$versionOptions" | head -1)" || [ -z "$fullVersion" ]; then
 		if currentNull="$(jq -r '.[env.version] == null' versions.json)" && [ "$currentNull" = 'true' ]; then
 			echo >&2 "warning: skipping '$version' (does not appear to be released yet)"
 			json="$(jq <<<"$json" -c '.[env.version] = null')"
@@ -284,7 +257,6 @@ for version in "${versions[@]}"; do
 		dind-rootless \
 		windows/windowsservercore-ltsc2025 \
 		windows/windowsservercore-ltsc2022 \
-		windows/windowsservercore-1809 \
 	; do
 		base="${variant%%/*}" # "buster", "windows", etc.
 		if [ "$base" = 'windows' ] && [ -z "${hasArches['windows-amd64']}" ]; then

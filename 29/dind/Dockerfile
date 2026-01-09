@@ -1,5 +1,10 @@
-{{ include "shared" -}}
-FROM docker:{{ env.version }}-cli
+#
+# NOTE: THIS DOCKERFILE IS GENERATED VIA "apply-templates.sh"
+#
+# PLEASE DO NOT EDIT IT DIRECTLY.
+#
+
+FROM docker:29-cli
 
 # https://github.com/moby/moby/blob/0eecd59153c03ced5f5ddd79cc98f29e4d86daec/project/PACKAGERS.md#runtime-dependencies
 # https://github.com/docker/docker-ce-packaging/blob/963aa02666035d4e268f33c63d7868d6cdd1d34c/deb/common/control#L28-L41
@@ -53,21 +58,31 @@ RUN set -eux; \
 
 RUN set -eux; \
 	\
-	{{
-		download({
-			arches: .arches,
-			urlKey: "dockerUrl",
-			# TODO sha256Key (once Docker publishes them 😭)
-			target: "docker.tgz",
-		})
-	}}; \
+	apkArch="$(apk --print-arch)"; \
+	case "$apkArch" in \
+		'x86_64') \
+			url='https://download.docker.com/linux/static/stable/x86_64/docker-29.1.3.tgz'; \
+			;; \
+		'armhf') \
+			url='https://download.docker.com/linux/static/stable/armel/docker-29.1.3.tgz'; \
+			;; \
+		'armv7') \
+			url='https://download.docker.com/linux/static/stable/armhf/docker-29.1.3.tgz'; \
+			;; \
+		'aarch64') \
+			url='https://download.docker.com/linux/static/stable/aarch64/docker-29.1.3.tgz'; \
+			;; \
+		*) echo >&2 "error: unsupported 'docker.tgz' architecture ($apkArch)"; exit 1 ;; \
+	esac; \
+	\
+	wget -O 'docker.tgz' "$url"; \
 	\
 	tar --extract \
 		--file docker.tgz \
 		--strip-components 1 \
 		--directory /usr/local/bin/ \
 		--no-same-owner \
-# we exclude the CLI binary because we already extracted that over in the "docker:{{ env.version }}-cli" image that we're FROM and we don't want to duplicate those bytes again in this layer
+# we exclude the CLI binary because we already extracted that over in the "docker:29-cli" image that we're FROM and we don't want to duplicate those bytes again in this layer
 		--exclude 'docker/docker' \
 	; \
 	rm docker.tgz; \
@@ -78,7 +93,7 @@ RUN set -eux; \
 	runc --version
 
 # https://github.com/docker/docker/tree/master/hack/dind
-ENV DIND_COMMIT {{ .dindCommit }}
+ENV DIND_COMMIT 8d9e3502aba39127e4d12196dae16d306f76993d
 
 RUN set -eux; \
 	wget -O /usr/local/bin/dind "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind"; \

@@ -4,7 +4,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM mcr.microsoft.com/windows/servercore:ltsc2022
+FROM mcr.microsoft.com/windows/servercore:ltsc2025
 
 # $ProgressPreference: https://github.com/PowerShell/PowerShell/issues/2138#issuecomment-251261324
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
@@ -15,8 +15,8 @@ RUN $newPath = ('{0}\docker;{1}' -f $env:ProgramFiles, $env:PATH); \
 	[Environment]::SetEnvironmentVariable('PATH', $newPath, [EnvironmentVariableTarget]::Machine);
 # doing this first to share cache across versions more aggressively
 
-ENV DOCKER_VERSION 28.0.0
-ENV DOCKER_URL https://download.docker.com/win/static/stable/x86_64/docker-28.0.0.zip
+ENV DOCKER_VERSION 29.2.0-rc.1
+ENV DOCKER_URL https://download.docker.com/win/static/test/x86_64/docker-29.2.0-rc.1.zip
 # TODO ENV DOCKER_SHA256
 # https://github.com/docker/docker-ce/blob/5b073ee2cf564edee5adca05eee574142f7627bb/components/packaging/static/hash_files !!
 # (no SHA file artifacts on download.docker.com yet as of 2017-06-07 though)
@@ -40,9 +40,9 @@ RUN Write-Host ('Downloading {0} ...' -f $env:DOCKER_URL); \
 	Write-Host 'Complete.';
 
 # https://github.com/docker-library/docker/issues/409#issuecomment-1462868414
-ENV DOCKER_BUILDX_VERSION 0.21.1
-ENV DOCKER_BUILDX_URL https://github.com/docker/buildx/releases/download/v0.21.1/buildx-v0.21.1.windows-amd64.exe
-ENV DOCKER_BUILDX_SHA256 ab3eba3acbfa6b6612690af075795254f29762efc8abace5f636b8e7628b1851
+ENV DOCKER_BUILDX_VERSION 0.30.1
+ENV DOCKER_BUILDX_URL https://github.com/docker/buildx/releases/download/v0.30.1/buildx-v0.30.1.windows-amd64.exe
+ENV DOCKER_BUILDX_SHA256 3c48e2da717c55518cf22a5b372f48f54cf3a58c9fae675b818a3311775e1b71
 RUN $dir = ('{0}\docker\cli-plugins' -f $env:ProgramFiles); \
 	Write-Host ('Creating {0} ...' -f $dir); \
 	New-Item -ItemType Directory $dir -Force; \
@@ -61,9 +61,9 @@ RUN $dir = ('{0}\docker\cli-plugins' -f $env:ProgramFiles); \
 	docker buildx version; \
 	\
 	Write-Host 'Complete.';
-ENV DOCKER_COMPOSE_VERSION 2.33.1
-ENV DOCKER_COMPOSE_URL https://github.com/docker/compose/releases/download/v2.33.1/docker-compose-windows-x86_64.exe
-ENV DOCKER_COMPOSE_SHA256 01bce3456228d8e1e4b0ba056f4b9730b7fd2c1a7113c8a985144c0fdee797b0
+ENV DOCKER_COMPOSE_VERSION 5.0.1
+ENV DOCKER_COMPOSE_URL https://github.com/docker/compose/releases/download/v5.0.1/docker-compose-windows-x86_64.exe
+ENV DOCKER_COMPOSE_SHA256 2ae341f9152b4d90f561f84b8f2e263d5b60e1613c6841c804447819290c4119
 RUN $dir = ('{0}\docker\cli-plugins' -f $env:ProgramFiles); \
 	Write-Host ('Creating {0} ...' -f $dir); \
 	New-Item -ItemType Directory $dir -Force; \
